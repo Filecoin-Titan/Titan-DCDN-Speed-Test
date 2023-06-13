@@ -15,7 +15,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -107,22 +106,32 @@ var speedTestCmd = &cli.Command{
 			Usage:       "the bytes of per range request",
 			DefaultText: "2MiB",
 		},
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "Make the operation more talkative",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.String("cid") == "" {
 			return fmt.Errorf("cid is required")
 		}
 
+		fmt.Println("Start testing node speed ...")
+
 		id := cctx.String("cid")
 		size := cctx.Int64("size")
 		if size <= 0 {
 			size = 2 << 20 // 2MiB
 		}
+		verbose := cctx.Bool("verbose")
 
+		startTime := time.Now()
 		address := os.Getenv("LOCATOR_API_INFO")
 		opts := []config.Option{
 			config.AddressOption(address),
 			config.TraversalModeOption(config.TraversalModeRange),
+			config.VerboseOption(verbose),
 		}
 
 		client, err := titan.New(opts...)
@@ -130,26 +139,52 @@ var speedTestCmd = &cli.Command{
 			return err
 		}
 
-		carid, _ := cid.Decode(id)
+		carId, _ := cid.Decode(id)
 		service := client.GetTitanService()
 
-		clients, err := service.GetAccessibleEdges(cctx.Context, carid)
+		directlyNodes, natTraversalNode, err := service.GroupByEdges(cctx.Context, carId)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("Start testing node speed ...")
+		clients := make(map[string]*types.Client)
+		for _, node := range directlyNodes {
+			clients[node.NodeID] = &types.Client{
+				Node:       node,
+				HttpClient: service.GetDefaultClient(),
+			}
+		}
+
+		ttfb1 := time.Since(startTime).Milliseconds()
+		fmt.Printf("Direct Connection Nodes Time to First Byte(TTFB): %dms\n", ttfb1)
+
+		_, err = service.Discover()
+		if err != nil {
+			return err
+		}
+
+		natTraversalClients, err := service.FilterAccessibleNodes(cctx.Context, natTraversalNode)
+		if err != nil {
+			return err
+		}
+
+		ttfb2 := time.Since(startTime).Milliseconds()
+		fmt.Printf("Nat Traversal (Punching) Nodes Time to First Byte(TTFB): %dms\n", ttfb2)
+
+		for k, v := range natTraversalClients {
+			clients[k] = v
+		}
+
 		results, err := speedTest(cctx.Context, clients, id, size)
 		if err != nil {
 			return err
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Node", "IP", "Speed", "RTT"})
-		table.SetBorder(false)
+		table.SetHeader([]string{"Node", "IP", "Speed"})
 
 		for _, result := range results {
-			table.Append([]string{result.NodeID, result.IP, result.Speed, result.RTT})
+			table.Append([]string{result.NodeID, result.IP, result.Speed})
 		}
 
 		table.Render()
@@ -176,11 +211,6 @@ func pullData(ctx context.Context, c *http.Client, node *types.Edge, cid string,
 func speedTest(ctx context.Context, clients map[string]*types.Client, cid string, size int64) ([]*TestResult, error) {
 	var result []*TestResult
 
-	rttResult, err := syncTestRTT(clients)
-	if err != nil {
-		return nil, err
-	}
-
 	for _, client := range clients {
 		if client.HttpClient == nil {
 			continue
@@ -188,7 +218,7 @@ func speedTest(ctx context.Context, clients map[string]*types.Client, cid string
 
 		speed, err := pullData(ctx, client.HttpClient, client.Node, cid, size)
 		if err != nil {
-			log.Errorf("pull data failed (%s): %v", client.Node.Address, err)
+			log.Warnf("pull data failed (%s): %v", client.Node.Address, err)
 			continue
 		}
 
@@ -196,39 +226,10 @@ func speedTest(ctx context.Context, clients map[string]*types.Client, cid string
 			NodeID: client.Node.NodeID,
 			IP:     client.Node.Address,
 			Speed:  speed,
-			RTT:    fmt.Sprintf("%dms", rttResult[client.Node.NodeID]),
 		})
 	}
 
 	return result, nil
-}
-
-func syncTestRTT(clients map[string]*types.Client) (map[string]int64, error) {
-	var lk sync.Mutex
-	var wg sync.WaitGroup
-
-	results := make(map[string]int64)
-
-	wg.Add(len(clients))
-	for _, client := range clients {
-		go func(id string) {
-			defer wg.Done()
-
-			rtt, err := getClientRTT(client)
-			if err != nil {
-				log.Errorf("get rtt: %v", err)
-				return
-			}
-
-			lk.Lock()
-			results[id] = rtt
-			lk.Unlock()
-		}(client.Node.NodeID)
-	}
-
-	wg.Wait()
-
-	return results, nil
 }
 
 func getFile(ctx context.Context, c *titan.Client, id, output string, decode bool) error {
@@ -269,7 +270,7 @@ func getFile(ctx context.Context, c *titan.Client, id, output string, decode boo
 		return err
 	}
 
-	return os.Remove(output)
+	return os.Remove(carFilePath)
 }
 
 var runCmd = &cli.Command{
@@ -313,14 +314,4 @@ var runCmd = &cli.Command{
 		serv := NewServer(client)
 		return serv.Run(addr, user, passwd)
 	},
-}
-
-func getClientRTT(c *types.Client) (int64, error) {
-	startTime := time.Now()
-	_, err := c.HttpClient.Head(fmt.Sprintf("https://%s/rpc/v0", c.Node.Address))
-	if err != nil {
-		return 0, err
-	}
-
-	return time.Since(startTime).Milliseconds() / 2, nil
 }
