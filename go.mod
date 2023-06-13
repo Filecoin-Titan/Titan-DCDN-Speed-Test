@@ -3,7 +3,7 @@ module github.com/Filecoin-Titan/titan-dcdn-speed-test
 go 1.19
 
 require (
-	github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230613100401-7dab191260ce
+	github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230613112257-1059341b5672
 	github.com/cheggaaa/pb v1.0.29
 	github.com/docker/go-units v0.5.0
 	github.com/gin-gonic/gin v1.9.1
