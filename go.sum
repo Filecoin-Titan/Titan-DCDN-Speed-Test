@@ -1,8 +1,6 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230605063210-8ddb0c5c26e0 h1:TOHrxKQKunet+wQUg3OvoS5TfCwPXj3YKeAsm+T+1/A=
-github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230605063210-8ddb0c5c26e0/go.mod h1:g/rOExJqoz+DNe6qYPjgmycz9XFMjzOeAZf07IIKQgU=
-github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230612090740-a748dc1d5383 h1:SBFCbXie3gLT7cB5Jl4lRtVR9gpVhcw/CQSVUkvAOxE=
-github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230612090740-a748dc1d5383/go.mod h1:agQAz6NA5lc+CQqxL4DqXAPzeTkrmzkrPNbRhzCsXEY=
+github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230613100401-7dab191260ce h1:ZahfHUYe5gGAnQy9kgGRMNz5oRKqbiCnKElU70Dm3ns=
+github.com/Filecoin-Titan/titan-sdk-go v0.0.0-20230613100401-7dab191260ce/go.mod h1:FG4PpXJUIDUf6StHKKhVQnbbR2gGYlpL3dBdK7C1kf4=
 github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a h1:E/8AP5dFtMhl5KPJz66Kt9G0n+7Sn41Fy1wv9/jHOrc=
 github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a/go.mod h1:OMCwj8VM1Kc9e19TLln2VL61YJF0x1XFtfdL4JdbSyE=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
