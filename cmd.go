@@ -49,6 +49,12 @@ var downloadFileCmd = &cli.Command{
 			Aliases: []string{"o"},
 			Usage:   "the path you want to save the asset",
 		},
+		&cli.Int64Flag{
+			Name:        "timeout",
+			Aliases:     []string{"t"},
+			DefaultText: "5",
+			Usage:       "request timeout seconds",
+		},
 		&cli.BoolFlag{
 			Name:    "verbose",
 			Aliases: []string{"v"},
@@ -64,11 +70,13 @@ var downloadFileCmd = &cli.Command{
 		output := cctx.String("output")
 		isBlock := cctx.Bool("block")
 		verbose := cctx.Bool("verbose")
+		timeout := cctx.Int64("timeout")
 
 		address := os.Getenv("LOCATOR_API_INFO")
 		opts := []config.Option{
 			config.AddressOption(address),
 			config.VerboseOption(verbose),
+			config.TimeoutOption(time.Duration(timeout) * time.Second),
 		}
 
 		var decode bool
